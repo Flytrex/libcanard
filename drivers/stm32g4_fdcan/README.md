@@ -1,4 +1,4 @@
-# STM32G4 FDCAN driver for libcanard
+# STM32G4 FDCAN driver for libcanard/DroneCAN
 
 This is a bare-bones driver for the variety of FDCAN that's found in STM32G4 series.
 
@@ -6,6 +6,7 @@ This is a bare-bones driver for the variety of FDCAN that's found in STM32G4 ser
 * Incoming messages are prioritized based on filters (see below). 
 * Multiple instances are supported
 * No dependencies, no interrupts (unless you want them)
+* Specific for DroneCAN.
 
 FDCANs are slightly different between STM32G4, STM32H7 (this has a very configurable SRAM) and STM32G0. 
 So this is only for G4, but can probably be extended to support everything.
@@ -14,9 +15,16 @@ So this is only for G4, but can probably be extended to support everything.
 
 ### Initialization
 
-Store a `canard_stm32g4_fdcan_driver` somewhere and set the `fdcan` pointer 
+1. Store a `canard_stm32g4_fdcan_driver` somewhere and set the `fdcan` pointer 
 to one of `FDCAN1_ADDR`/`FDCAN2_ADDR`/`FDCAN3_ADDR`, then
 call `canard_stm32g4fdcan_init`.
+
+2. Then configure filters by calling `canard_stm32g4fdcan_type_id_filter` as many times as needed (8 double
+rules can be created all in all).
+
+3. Call `canard_stm32g4fdcan_start`.
+
+4. After a Node ID has been assigned (or if you know it beforehand), call `canard_stm32g4fdcan_enable_automatic_retransmission`.
 
 It's the user's responsibility to provide clock to the chosen FDCAN peripheral and configure I/O pins.
 
