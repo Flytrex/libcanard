@@ -5,9 +5,9 @@
  *      Author: grishar
  */
 
-#include "drivers/stm32g4_fdcan/canard_stm32g4_fdcan.h"
+#include "canard_stm32g4_fdcan.h"
 
-#include "drivers/stm32g4_fdcan/_fdcan_g4.h"
+#include "_fdcan_g4.h"
 #include "../stm32/canard_stm32.h" /* for CanardSTM32ComputeCANTimings */
 
 /* Local  */

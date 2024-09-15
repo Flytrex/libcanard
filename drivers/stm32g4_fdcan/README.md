@@ -32,9 +32,9 @@ It's the user's responsibility to provide clock to the chosen FDCAN peripheral a
 
 The driver sets up two RX FIFOs, FIFO0 for "more important" and FIFO1 for "less important" messages.
 
-Three things can happen to a message on reception:
-1. The DroneCAN data type ID is in the "accept" filter (`canard_stm32fdcan_accept_filter`) -> goes to FIFO0
-2. The DroneCAN data type ID is in the "reject" filter (`canard_stm32fdcan_reject_filter`) -> discarded
+Three things can happen to a message on reception (see `canard_stm32g4fdcan_type_id_filter`):
+1. The DroneCAN data type ID is in the "accept" filter (`accept_not_reject=1`) -> goes to FIFO0
+2. The DroneCAN data type ID is in the "reject" filter (`accept_not_reject=0`) -> discarded
 3. The DroneCAN data type ID is in neither -> goes to FIFO1
 
 `canard_stm32fdcan_recieve` reads one message at a time and prefers FIFO0.
