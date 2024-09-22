@@ -61,12 +61,12 @@ void canard_stm32g4fdcan_start(canard_stm32g4_fdcan_driver *driver);
  * The messages that don't match the filter end up in FIFO1.
  *
  */
-int canard_stm32g4fdcan_type_id_filter(canard_stm32g4_fdcan_driver *driver, int dronecan_type_id1, int dronecan_type_id2, int accept_not_reject);
+int canard_stm32g4fdcan_type_id_filter(canard_stm32g4_fdcan_driver *driver,
+                                       int dronecan_type_id1, int dronecan_type_id2, int accept_not_reject);
 
 /**
  * Pushes one frame into the TX buffer, if there is space.
- * Note that proper care is taken to ensure that no inner priority inversion is taking place.
- * This function does never block.
+ * This function doesn't block.
  *
  * @retval      1               Transmitted successfully
  * @retval      0               No space in the buffer
@@ -76,13 +76,13 @@ int canard_stm32g4fdcan_transmit(canard_stm32g4_fdcan_driver *driver, const Cana
 
 /**
  * Reads one frame from the hardware RX FIFO, unless all FIFO are empty.
- * This function does never block.
+ * This function doesn't block.
  *
  * @retval      1               Read successfully
  * @retval      0               The buffer is empty
  * @retval      negative        Error
  */
-int canard_stm32g4fdcan_recieve(canard_stm32g4_fdcan_driver *driver, CanardCANFrame* const out_frame);
+int canard_stm32g4fdcan_receive(canard_stm32g4_fdcan_driver *driver, CanardCANFrame* const out_frame);
 
 /**
  *	Reads the instant standard CAN state variables from the hardware.

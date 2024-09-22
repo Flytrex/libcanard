@@ -193,7 +193,7 @@ int canard_stm32g4fdcan_transmit(canard_stm32g4_fdcan_driver *driver, const Cana
 	int put_index = fdcan->TXFQS & (3 << 16) >> 16;
 	canard_frame_to_tx_buf_elem(frame, get_tx_buf_element(driver, put_index));
 	fdcan->TXBAR = (1 << put_index);
-	return 0;
+	return 1;
 }
 
 int canard_stm32g4fdcan_receive(canard_stm32g4_fdcan_driver *driver, CanardCANFrame* const out_frame)
