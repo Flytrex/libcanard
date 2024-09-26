@@ -260,7 +260,7 @@ static void canard_frame_to_tx_buf_elem(const CanardCANFrame* const frame, fdcan
 		tx_data_element[0] = tx_data_frame[0];
 		tx_data_element[1] = tx_data_frame[1];
 #ifdef CANARD_ENABLE_CANFD
-		for (int i = 2; i < frame->data_len / sizeof(uint32_t); ++i) {
+		for (size_t i = 2; i < frame->data_len / sizeof(uint32_t); ++i) {
 			tx_data_element[i] = tx_data_frame[i];
 		}
 #endif
