@@ -65,7 +65,7 @@ int canard_stm32g4fdcan_init(canard_stm32g4_fdcan_driver *driver, int bitrate_bp
 	if (rc < 0)
 		return rc;
 
-#ifdef CANARD_ENABLE_CANFD
+#if CANARD_ENABLE_CANFD
 	CanardSTM32CANTimings brs_timings = {0};
 	rc = canardSTM32ComputeCANTimings(periph_clock_rate, fdbitrate_bps, &brs_timings);
 
@@ -108,7 +108,7 @@ int canard_stm32g4fdcan_init(canard_stm32g4_fdcan_driver *driver, int bitrate_bp
 					(1 << 14);						/* TXP=1: Enable transmit pause -- should be generally beneficial. */
 
 
-#ifdef CANARD_ENABLE_CANFD
+#if CANARD_ENABLE_CANFD
 	fdcan->CCCR |= (1 << 8) | (1 << 9); 			/* Enable FD and Bit Rate Switching */
 #endif
 
@@ -133,7 +133,7 @@ int canard_stm32g4fdcan_init(canard_stm32g4_fdcan_driver *driver, int bitrate_bp
 				  ((nominal_timings.bit_segment_1 - 1) 						<< 8U) |
 				  ((nominal_timings.bit_rate_prescaler - 1)					<< 16U);
 
-#ifdef CANARD_ENABLE_CANFD
+#if CANARD_ENABLE_CANFD
 	/* Set Bit Rate Switching timings */
 	fdcan->DBTP = (1 << 23) | /* TDC = 1: enable transceiver delay compensation */
 			 	  ((brs_timings.max_resynchronization_jump_width - 1) 	<< 0U) |
@@ -246,7 +246,7 @@ static void canard_frame_to_tx_buf_elem(const CanardCANFrame* const frame, fdcan
 	/* See Table 408 RM0440 */
 	/* 			 ESI = 0   29-bit id   not remote	CAN frame ID */
 	ele->t[0] = (0 << 31) | (1 << 30) | (0 << 29) | (frame->id & 0x1FFFFFFF);
-#ifdef CANARD_ENABLE_CANFD
+#if CANARD_ENABLE_CANFD
 	/* don't store events  is this an FD frame    use bit rate switch		DLC                        */
 	ele->t[1] = (0 << 23) | (frame->canfd << 21) |  (1 << 20) | (dlc_encode(frame->data_len, frame->canfd));
 #else
@@ -259,7 +259,7 @@ static void canard_frame_to_tx_buf_elem(const CanardCANFrame* const frame, fdcan
 	if (frame->data_len) {
 		tx_data_element[0] = tx_data_frame[0];
 		tx_data_element[1] = tx_data_frame[1];
-#ifdef CANARD_ENABLE_CANFD
+#if CANARD_ENABLE_CANFD
 		for (size_t i = 2; i < frame->data_len / sizeof(uint32_t); ++i) {
 			tx_data_element[i] = tx_data_frame[i];
 		}
@@ -299,7 +299,7 @@ static void rxfifo_receive_frame(fdcan_registers *regs, CanardCANFrame* const ou
 	out_frame->id = rxfifo_elem_get_ext_id(ele);
 	out_frame->data_len = rxfifo_elem_get_dlc(ele);
 	out_frame->iface_id = ((uint32_t) regs - FDCAN1_ADDR) / sizeof(fdcan_registers);
-#ifdef CANARD_ENABLE_CANFD
+#if CANARD_ENABLE_CANFD
 	out_frame->canfd = rxfifo_elem_is_fd_frame(ele);
 	CANARD_ASSERT(out_frame->data_len <= 64);
 #else
