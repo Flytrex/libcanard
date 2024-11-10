@@ -94,15 +94,16 @@ int canard_stm32g4fdcan_init(canard_stm32g4_fdcan_driver *driver, int bitrate_bp
 	CANARD_ASSERT(fdcan->ENDN == 0x87654321);		/* Also confirms that driver->fdcan
 													 * is probably pointing at something sensible */
 
+	/* Enter configuration mode */
 	fdcan->CCCR &= ~(1 << 4);						/* Exit from sleep mode */
 	while (fdcan->CCCR & (1 << 3));					/* Wait until exited from sleep mode */
-
 	fdcan->CCCR |=  (1 << 0);						/* Get to INIT mode */
 	while (!(fdcan->CCCR & (1 << 0)));				/* Wait until init mode sets */
+	fdcan->CCCR |=  (1 << 1);                       /* CCE=1: config change enable */
+	while (!(fdcan->CCCR & (1 << 1)));              /* Wait intil CCE sets */
 
 	/* General config */
-	fdcan->CCCR |=  (1 << 1) | 						/* CCE=1: config change enable */
-					(1 << 6) |						/* DAR=1: automatic retransmission should be disabled
+	fdcan->CCCR |=  (1 << 6) |						/* DAR=1: automatic retransmission should be disabled
 													 * before DroneCAN Node ID is assigned */
 					(1 << 13)|						/* EFBI=1: edge filtering enabled */
 					(1 << 14);						/* TXP=1: Enable transmit pause -- should be generally beneficial. */
@@ -348,7 +349,11 @@ static int rxfifo_elem_is_fd_frame(fdcan_rxfifo_elem *rxf)
 
 static int rxfifo_elem_get_ext_id(fdcan_rxfifo_elem *rxf)
 {
-	return rxf->r[0] & 0x1FFFFFFF;
+    int ext_id = rxf->r[0] & 0x1FFFFFFF;
+    /* canardHandleRxFrame() wants bit 31 set if it's an extended frame.
+     * This driver filters out all non-extended frames, so we set it by default. */
+    ext_id |= CANARD_CAN_FRAME_EFF;
+    return ext_id;
 }
 
 static volatile uint32_t *rxfifo_elem_get_payload(fdcan_rxfifo_elem *rxf)
@@ -402,33 +407,40 @@ static void filt_elem_reject_dual_id(fdcan_ext_filt_elem *fe, uint32_t frame_id1
 __attribute__((const))
 static inline int dlc_decode(int dlc_value, int fd)
 {
-	if (dlc_value <= 8) {
-		return dlc_value;
-	}
-	if (fd) {
-		switch (dlc_value) {
-		case 9:
-			return 12;
-		case 10:
-			return 16;
-		case 11:
-			return 20;
-		case 12:
-			return 24;
-		case 13:
-			return 32;
-		case 14:
-			return 48;
-		case 15:
-			return 64;
-		default:
-			CANARD_ASSERT(0);
-			return 0;
-		}
-	}
-	else {
-		return 8;
-	}
+    if (fd) {
+        if (dlc_value <= 8) {
+            return dlc_value;
+        }
+        else {
+            switch (dlc_value) {
+            case 9:
+                return 12;
+            case 10:
+                return 16;
+            case 11:
+                return 20;
+            case 12:
+                return 24;
+            case 13:
+                return 32;
+            case 14:
+                return 48;
+            case 15:
+                return 64;
+            default:
+                CANARD_ASSERT(0);
+                return 0;
+            }
+        }
+    }
+    else {
+        if (dlc_value <= 8) {
+            return dlc_value;
+        }
+        else {
+            CANARD_ASSERT(0);
+        }
+    }
 }
 
 __attribute__((const))
