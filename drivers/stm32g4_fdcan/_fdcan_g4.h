@@ -3,7 +3,9 @@
 
 #include <stdint.h>
 
-typedef struct {
+/* ------------------- SRAM layout --------------------------------------------------------------------------------- */
+
+typedef struct __attribute__((packed, aligned(4))) {
 	volatile uint32_t CREL;
 	volatile uint32_t ENDN;
 	volatile uint32_t RESERVED1;
@@ -48,28 +50,125 @@ typedef struct {
 	volatile uint32_t TXEFA;
 } fdcan_registers;
 
-typedef struct {
+/* Helper to iterate over RXFxS/A */
+typedef struct __attribute__((packed, aligned(4))) {
 	volatile uint32_t RXFxS;
 	volatile uint32_t RXFxA;
 } fdcan_rxfifo_regs;
 
-typedef struct {
-	volatile uint32_t f0;
-	volatile uint32_t f1;
-} fdcan_ext_filt_elem;
+/* ------------------- SRAM layout --------------------------------------------------------------------------------- */
+/* Note: bitfields only to get a register-like view in GDB. Don't use them directly, it explodes.                    */
 
-#define EFEC_OFFSET 29
-#define EFT_OFFSET 30
+typedef struct __attribute__((packed, aligned(4))) {
+    union {
+        uint32_t t0;
+        struct {
+            uint32_t id             : 29;
+            uint32_t rtr            : 1; /* remote frame */
+            uint32_t xtd            : 1; /* extended frame */
+            uint32_t esi            : 1; /* Force error passive flag */
+        };
+    };
 
-#define FDCAN_RXFIFO_ELEM_LEN (64 / 4 + 2)
-typedef struct {
-	volatile uint32_t r[FDCAN_RXFIFO_ELEM_LEN];
-} fdcan_rxfifo_elem;
+    union {
+        uint32_t t1;
+        struct {
+            uint32_t reserved0      : 16;
+            uint32_t dlc            : 4; /* DLC */
+            uint32_t brs            : 1; /* Bit Rate Switching Frame */
+            uint32_t fdf            : 1; /* CAN FD frame */
+            uint32_t reserved1      : 1;
+            uint32_t efc            : 1; /* store tx events */
+            uint32_t mm             : 8; /* message marker (tx events) */
+        };
+    };
+    uint32_t data[64 / sizeof(uint32_t)];
+} fdcan_tx_buf_element;
 
-#define FDCAN_TXFIFO_ELEM_LEN (64 / 4 + 2)
-typedef struct {
-	volatile uint32_t t[FDCAN_TXFIFO_ELEM_LEN];
-} fdcan_tx_buf_elem;
+typedef struct __attribute__((packed, aligned(4))) {
+    union {
+        uint32_t r0;
+        struct {
+            uint32_t id             : 29;
+            uint32_t rtr            : 1; /* remote */
+            uint32_t xtd            : 1; /* extended */
+            uint32_t esi            : 1; /* transmitter error passive */
+        };
+    };
+
+    union {
+        uint32_t r1;
+        struct {
+            uint32_t rxts           : 16;/* timestamp */
+            uint32_t dlc            : 4;
+            uint32_t brs            : 1; /* Bit Rate Switching Frame */
+            uint32_t fdf            : 1; /* CAN FD frame */
+            uint32_t reserved0      : 1;
+            uint32_t fidx           : 7; /* filter index */
+            uint32_t anmf           : 1; /* no filter matched */
+        };
+    };
+    uint32_t data[64 / sizeof(uint32_t)];
+} fdcan_rx_buf_element;
+
+typedef struct __attribute__((packed, aligned(4))) {
+    /* not detailed, standard IDs not used for DroneCAN */
+    uint32_t stub;
+} fdcan_stdid_filter_element;
+
+typedef struct __attribute__((packed, aligned(4))) {
+    /* not detailed, tx events are not used */
+    uint32_t stub[2];
+} fdcan_tx_event_element;
+
+typedef struct __attribute__((packed, aligned(4))) {
+    union {
+        uint32_t f0;
+        struct {
+            uint32_t efid1      : 29;
+            enum {
+                FILT_ELEM_EFEC_DISABLE,
+                FILT_ELEM_EFEC_STORE_RXFIFO0,
+                FILT_ELEM_EFEC_STORE_RXFIFO1,
+                FILT_ELEM_EFEC_REJECT,
+                FILT_ELEM_EFEC_SET_PRIORITY_STORE_RXFIFO0,
+                FILT_ELEM_EFEC_SET_PRIORITY_STORE_RXFIFO1,
+                FILT_ELEM_EFEC_RESERVED,
+            } efec              : 3;
+        };
+    };
+    union {
+        uint32_t f1;
+        struct {
+            uint32_t efid2      : 29;
+            uint32_t reserved0  : 1;
+            enum {
+                FILT_ELEM_EFT_RANGE,
+                FILT_ELEM_EFT_DUAL_ID,
+                FILT_ELEM_EFT_ID_MASK,
+                FILT_ELEM_EFT_RANGE_NO_XIDAM
+            } eft               : 2;
+        };
+    };
+} fdcan_extid_filter_element;
+
+/* Figure 669 RM0440 */
+#define FDCAN_NUM_STDID_FE              28
+#define FDCAN_NUM_EXTID_FE              8
+#define FDCAN_NUM_RXFIFO_ELEMENTS       3
+#define FDCAN_NUM_TX_EVENT_FIFOS        3
+#define FDCAN_NUM_TX_BUF                3
+
+typedef struct __attribute__((packed, aligned(4))) {
+    fdcan_stdid_filter_element stdid_filter_element[FDCAN_NUM_STDID_FE];    // 28   // 28
+    fdcan_extid_filter_element extid_filter_element[FDCAN_NUM_EXTID_FE];    // 16   // 44
+    fdcan_rx_buf_element rxfifo0[FDCAN_NUM_RXFIFO_ELEMENTS];                // 54   // 98
+    fdcan_rx_buf_element rxfifo1[FDCAN_NUM_RXFIFO_ELEMENTS];                // 54   // 152
+    fdcan_tx_event_element txevent_fifo[FDCAN_NUM_TX_EVENT_FIFOS];          // 6    // 158
+    fdcan_tx_buf_element txbuf[FDCAN_NUM_TX_BUF];                           // 54   // 212 == 0x350
+} fdcan_sram;
+
+static_assert(sizeof(fdcan_sram) == 0x350);
 
 #define DLC_OFFSET 16
 
@@ -78,15 +177,5 @@ typedef struct {
 #define FDCAN3 ((fdcan_registers *) FDCAN3_ADDR)
 
 #define SRAMCAN_START 			0x4000A400U
-#define SRAMCAN_SIZE			0x0350U
-#define SRAMCAN_EXT_FILT_OFFSET 0x0070U
-#define SRAMCAN_RXFIFO0_OFFSET 	0x00B0U
-#define SRAMCAN_RXFIFO1_OFFSET 	0x0188U
-#define SRAMCAN_RXFIFO_SIZE 	(SRAMCAN_RXFIFO1_OFFSET - SRAMCAN_RXFIFO0_OFFSET)
-#define SRAMCAN_TXB_OFFSET		0x0278U
-
-#define DRONECAN_MESSAGEID_FILTER 0xFFFF80
-
-#define FDCAN_NUM_EXT_FILTERS 8
 
 #endif

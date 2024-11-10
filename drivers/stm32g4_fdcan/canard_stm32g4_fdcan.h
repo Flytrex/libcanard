@@ -20,8 +20,10 @@
 
 typedef struct {
 	void *fdcan;
+	void *fdcan_sram;
 	struct {
-		uint32_t rx_fifo_overruns;
+		uint32_t rx_fifo0_overruns;
+		uint32_t rx_fifo1_overruns;
 		uint32_t tx_fifo_overruns;
 		uint32_t warning_events;
 		uint32_t bus_off_events;

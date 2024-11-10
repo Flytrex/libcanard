@@ -13,31 +13,13 @@
 /* Local  */
 __attribute__((const))
 static inline uint32_t fdcan_ram(const fdcan_registers *r);
-
 static void clear_and_handle_faults(canard_stm32g4_fdcan_driver *driver);
-
-static fdcan_tx_buf_elem *get_tx_buf_element(canard_stm32g4_fdcan_driver *driver, int index);
-static void canard_frame_to_tx_buf_elem(const CanardCANFrame* const frame, fdcan_tx_buf_elem *ele);
-
-static void rxfifo_receive_frame(fdcan_registers *regs, CanardCANFrame* const out_frame, fdcan_rxfifo_elem *ele);
-
-__attribute__((const))
-static inline fdcan_rxfifo_elem *get_rxfifo_elem(const canard_stm32g4_fdcan_driver *driver,
-								fdcan_rxfifo_regs *fifo_regs, size_t elemindex);
-static int rxfifo_elem_is_fd_frame(fdcan_rxfifo_elem *rxf);
-static int rxfifo_elem_get_ext_id(fdcan_rxfifo_elem *rxf);
-static volatile uint32_t *rxfifo_elem_get_payload(fdcan_rxfifo_elem *rxf);
+static void canard_frame_to_tx_buf_elem(const CanardCANFrame* const frame, fdcan_tx_buf_element *ele);
+static int rxfifo_get_first_elem_index(fdcan_rxfifo_regs *rxf);
+static void rxfifo_receive_frame(fdcan_registers *regs, CanardCANFrame* const out_frame, fdcan_rx_buf_element *ele);
 static int rxfifo_get_fill_level(fdcan_rxfifo_regs *rxf);
 static int rxfifo_get_read_index(fdcan_rxfifo_regs *rxf);
-static fdcan_rxfifo_elem *rxfifo_get_first_elem(canard_stm32g4_fdcan_driver *driver, fdcan_rxfifo_regs *rxf, int *elem_index);
-static int rxfifo_elem_get_dlc(fdcan_rxfifo_elem *rxf);
 static void rxfifo_ack_frame(fdcan_rxfifo_regs *rxfifo_regs, int ack_index);
-
-__attribute__((const))
-static inline fdcan_ext_filt_elem* get_ext_filt_elem(const fdcan_registers *r, size_t index);
-static int filt_elem_active(const fdcan_ext_filt_elem * const fe);
-static void filt_elem_accept_dual_id(fdcan_ext_filt_elem *fe, uint32_t frame_id1, uint32_t frame_id2);
-static void filt_elem_reject_dual_id(fdcan_ext_filt_elem *fe, uint32_t frame_id1, uint32_t frame_id2);
 
 __attribute__((const))
 static inline int dlc_decode(int dlc_value, int fd);
@@ -45,6 +27,7 @@ static inline int dlc_decode(int dlc_value, int fd);
 __attribute__((const))
 static inline int dlc_encode(int data_len, int fd);
 
+#define EXT_ID_FILTER 0x1FFFFFFF
 
 /* Module */
 
@@ -122,10 +105,10 @@ int canard_stm32g4fdcan_init(canard_stm32g4_fdcan_driver *driver, int bitrate_bp
 			(1 << 2)	| 				/* ANFE = 1: Non-matched extended frames go to FIFO1 */
 			(1 << 1) 	| (1 << 0);		/* RRFS = RRFE = 1: reject remote frames */
 
-	fdcan->XIDAM = 0xFFFF80 << 7;		/* Only consider the DroneCAN Message type ID part in the CAN frame.
+	fdcan->XIDAM = 0xFFFF00;		    /* Only consider the DroneCAN Message type ID part in the CAN frame.
 										 * This allows to setup each filter element as a dual ID filter
 										 * and have 16 message rules in total.
-										 * Match only broadcast messages (serviceNotMessage bit
+										 * Matches only broadcast messages (serviceNotMessage bit
 										 * will never match with anything in the filters). */
 	/* Timing config */
 	/* Set nominal timings */
@@ -151,27 +134,34 @@ int canard_stm32g4fdcan_init(canard_stm32g4_fdcan_driver *driver, int bitrate_bp
 	 * - on bus-off */
 	/* 			 bus-off  | rx1 lost | rx1 new  | rx0 lost | rx0 new */
 	fdcan->IE = (1 << 19) | (1 << 5) | (1 << 3) | (1 << 2) | (1 << 0);
-
-	driver->fdcan_sram_base = fdcan_ram(fdcan);	/* Precalc this address to save on divisions later on */
+	driver->fdcan_sram = (void *) fdcan_ram(fdcan);
+	memset(driver->fdcan_sram, 0, sizeof(fdcan_sram));
 	return 0;
 }
 
 #define STM32G4_FDCAN_NUM_EXT_FILTER_ELEMENTS 8
+#define EFEC_OFFSET 29
+#define EFEC_MASK 0x7
+#define EFT_OFFSET 30
+
+static int filt_elem_get_efec(fdcan_extid_filter_element *fe)
+{
+    return (fe->f0 & (EFEC_MASK << EFEC_OFFSET)) >> EFEC_OFFSET;
+}
 
 int canard_stm32g4fdcan_type_id_filter(canard_stm32g4_fdcan_driver *driver,
 										int dronecan_type_id1, int dronecan_type_id2, int accept_not_reject)
 {
+    fdcan_sram *sram = driver->fdcan_sram;
 	for (int i = 0; i < STM32G4_FDCAN_NUM_EXT_FILTER_ELEMENTS; ++i) {
-		fdcan_ext_filt_elem *fe = get_ext_filt_elem(driver->fdcan, i);
-		if (!filt_elem_active(fe)) {
-			if (accept_not_reject) {
-				filt_elem_accept_dual_id(fe, dronecan_type_id1, dronecan_type_id2);
-			}
-			else {
-				filt_elem_reject_dual_id(fe, dronecan_type_id1, dronecan_type_id2);
-			}
-			return 0;
-		}
+	    fdcan_extid_filter_element *filt = &sram->extid_filter_element[i];
+	    if (filt_elem_get_efec(filt) == FILT_ELEM_EFEC_DISABLE) {
+	        filt->f0 = dronecan_type_id1 << 8;
+	        filt->f1 = (FILT_ELEM_EFT_DUAL_ID << EFT_OFFSET) | (dronecan_type_id2 << 8);
+	        filt->f0 |= accept_not_reject ? FILT_ELEM_EFEC_STORE_RXFIFO0 << EFEC_OFFSET :
+	                                            FILT_ELEM_EFEC_REJECT << EFEC_OFFSET;
+	        return 0;
+	    }
 	}
 	return -CANARD_ERROR_STM32_FDCAN_OUT_OF_FILTER_SPACE;
 }
@@ -180,20 +170,21 @@ void canard_stm32g4fdcan_start(canard_stm32g4_fdcan_driver *driver)
 {
 	fdcan_registers *fdcan = driver->fdcan;
 	fdcan->CCCR &= ~((1 << 0) | (1 << 1)); 		/* Clear INIT and CCE */
-	while ((fdcan->CCCR & (1 << 0)));	/* Wait until we leave init mode */
+	while ((fdcan->CCCR & (1 << 0)));	        /* Wait until we leave init mode */
 }
 
 int canard_stm32g4fdcan_transmit(canard_stm32g4_fdcan_driver *driver, const CanardCANFrame* const frame)
 {
 	clear_and_handle_faults(driver);
 	fdcan_registers *fdcan = driver->fdcan;
+	fdcan_sram *sram = driver->fdcan_sram;
 	if (fdcan->TXFQS & (1 << 21)) {
 		/* TFQF set: TX queue full */
 		return 0;
 	}
 	int put_index = fdcan->TXFQS & (3 << 16) >> 16;
-	canard_frame_to_tx_buf_elem(frame, get_tx_buf_element(driver, put_index));
-	fdcan->TXBAR = (1 << put_index);
+	canard_frame_to_tx_buf_elem(frame, &sram->txbuf[put_index]);
+	fdcan->TXBAR |= (1 << put_index);
 	return 1;
 }
 
@@ -201,21 +192,23 @@ int canard_stm32g4fdcan_receive(canard_stm32g4_fdcan_driver *driver, CanardCANFr
 {
 	clear_and_handle_faults(driver);
 	fdcan_registers *fdcan = driver->fdcan;
+	fdcan_sram *sram = driver->fdcan_sram;
 	fdcan_rxfifo_regs *rxfifo[2] = {(fdcan_rxfifo_regs *) &fdcan->RXF0S, (fdcan_rxfifo_regs *) &fdcan->RXF1S};
-	int ele_index = -1;
-	fdcan_rxfifo_elem *ele = NULL;
-	ele = rxfifo_get_first_elem(driver, rxfifo[0], &ele_index);
-	if (ele) {
-		rxfifo_receive_frame(fdcan, out_frame, ele);
-		rxfifo_ack_frame(rxfifo[0], ele_index);
-		return 1;
+	int index;
+	index = rxfifo_get_first_elem_index(rxfifo[0]);
+	if (index != -1) {
+	    rxfifo_receive_frame(fdcan, out_frame, &sram->rxfifo0[index]);
+	    rxfifo_ack_frame(rxfifo[0], index);
+	    return 1;
 	}
-	ele = rxfifo_get_first_elem(driver, rxfifo[1], &ele_index);
-	if (ele) {
-		rxfifo_receive_frame(fdcan, out_frame, ele);
-		rxfifo_ack_frame(rxfifo[1], ele_index);
-		return 1;
-	}
+
+	index = rxfifo_get_first_elem_index(rxfifo[1]);
+    if (index != -1) {
+        rxfifo_receive_frame(fdcan, out_frame, &sram->rxfifo1[index]);
+        rxfifo_ack_frame(rxfifo[1], index);
+        return 1;
+    }
+
 	return 0;
 }
 
@@ -237,35 +230,29 @@ void canard_stm32g4fdcan_get_protocol_state(canard_stm32g4_fdcan_driver *driver,
 
 /* Local */
 
-static fdcan_tx_buf_elem *get_tx_buf_element(canard_stm32g4_fdcan_driver *driver, int index)
+static void canard_frame_to_tx_buf_elem(const CanardCANFrame* const frame, fdcan_tx_buf_element *ele)
 {
-	return (fdcan_tx_buf_elem *) driver->fdcan_sram_base + SRAMCAN_TXB_OFFSET + sizeof(fdcan_tx_buf_elem) * index;
-}
+    CANARD_ASSERT(frame->data_len); /* DLC = 0 not permitted in DroneCAN */
 
-static void canard_frame_to_tx_buf_elem(const CanardCANFrame* const frame, fdcan_tx_buf_elem *ele)
-{
-	/* See Table 408 RM0440 */
-	/* 			 ESI = 0   29-bit id   not remote	CAN frame ID */
-	ele->t[0] = (0 << 31) | (1 << 30) | (0 << 29) | (frame->id & 0x1FFFFFFF);
+    /* See Table 408 RM0440 */
+    /*           ESI = 0   29-bit id   not remote   CAN frame ID */
+    ele->t0 = (0 << 31) | (1 << 30) | (0 << 29) | (frame->id & EXT_ID_FILTER);
+
 #if CANARD_ENABLE_CANFD
-	/* don't store events  is this an FD frame    use bit rate switch		DLC                        */
-	ele->t[1] = (0 << 23) | (frame->canfd << 21) |  (1 << 20) | (dlc_encode(frame->data_len, frame->canfd));
+    /* don't store events  is this an FD frame    use bit rate switch                    DLC                               */
+    ele->t1 = (0 << 23) | (frame->canfd << 21) |  (frame->canfd << 20)  | (dlc_encode(frame->data_len, frame->canfd) << 16);
 #else
-	ele->t[1] = (0 << 23) | (0 << 21)            |  (0 << 20) | (dlc_encode(frame->data_len, 0));
+    ele->t1 = (0 << 23) | (0 << 21)            |  (0 << 20)             | (dlc_encode(frame->data_len, 0) << 16);
 #endif
 
-	volatile uint32_t *tx_data_element = (volatile uint32_t *) &ele->t[2];
-	volatile uint32_t *tx_data_frame = (volatile uint32_t *) frame->data;
-
-	if (frame->data_len) {
-		tx_data_element[0] = tx_data_frame[0];
-		tx_data_element[1] = tx_data_frame[1];
+    uint32_t *tx_data_frame = (uint32_t *) frame->data;
+    ele->data[0] = tx_data_frame[0];
+    ele->data[1] = tx_data_frame[1];
 #if CANARD_ENABLE_CANFD
-		for (size_t i = 2; i < frame->data_len / sizeof(uint32_t); ++i) {
-			tx_data_element[i] = tx_data_frame[i];
-		}
+    for (size_t i = 2; i < frame->data_len / sizeof(uint32_t); ++i) {
+        ele->data[i] = tx_data_frame[i];
+    }
 #endif
-	}
 }
 
 static void clear_and_handle_faults(canard_stm32g4_fdcan_driver *driver)
@@ -284,81 +271,74 @@ static void clear_and_handle_faults(canard_stm32g4_fdcan_driver *driver)
 	}
 
 	uint32_t ir = fdcan->IR;
-	if (ir & ((1 << 2) | (1 << 5))) { /* RF0L | RF1L */
-		driver->statistics.rx_fifo_overruns++;
+	if (ir & (1 << 2)) {
+	    /* RF0L */
+	    driver->statistics.rx_fifo0_overruns++;
 	}
-	if (ir & (1 << 12))  { /* TEFL */
+	if (ir & (1 << 5)) {
+	    /* RF1L */
+		driver->statistics.rx_fifo1_overruns++;
+	}
+	if (ir & (1 << 12))  {
+	    /* TEFL */
 		driver->statistics.tx_fifo_overruns++;
 	}
 	fdcan->IR = 0xFFFFFF; /* clear IR */
 }
 
-static void rxfifo_receive_frame(fdcan_registers *regs, CanardCANFrame* const out_frame, fdcan_rxfifo_elem *ele)
+#define DLC_OFFSET 16
+#define DLC_MASK 0xF
+
+static int rxfifo_get_dlc(fdcan_rx_buf_element *ele)
+{
+    return (ele->r1 & (DLC_MASK << DLC_OFFSET)) >> DLC_OFFSET;
+}
+
+static void rxfifo_receive_frame(fdcan_registers *regs, CanardCANFrame* const out_frame, fdcan_rx_buf_element *ele)
 {
 	/* Don't need to check if this is a standard or remote frame (not needed for DroneCAN),
 	 * they're rejected by the filter configuration */
-	out_frame->id = rxfifo_elem_get_ext_id(ele);
-	out_frame->data_len = rxfifo_elem_get_dlc(ele);
+	out_frame->id = ele->r0 & EXT_ID_FILTER;
+	out_frame->id |= CANARD_CAN_FRAME_EFF; /* canardHandleRxFrame() fails if this bit is not set. We set it manually,
+	                                        * no standard frames are received by the filter configuration */
 	out_frame->iface_id = ((uint32_t) regs - FDCAN1_ADDR) / sizeof(fdcan_registers);
 #if CANARD_ENABLE_CANFD
-	out_frame->canfd = rxfifo_elem_is_fd_frame(ele);
+	out_frame->canfd = (ele->r0 & (1 << 21)) > 0;
+	out_frame->data_len = dlc_decode(rxfifo_get_dlc(ele), out_frame->canfd);
 	CANARD_ASSERT(out_frame->data_len <= 64);
 #else
+	out_frame->data_len = dlc_decode(rxfifo_get_dlc(ele), 0);
 	CANARD_ASSERT(out_frame->data_len <= 8);
 #endif
-	volatile uint32_t *payload = rxfifo_elem_get_payload(ele);
-	if (out_frame->data_len) {
-		uint32_t *out_data = (uint32_t *) out_frame->data;
-		/* SRAMCAN is accessed in words, not bytes, so no memcpy().
-		 * For dlc <= 8, two words are always copied.*/
-		if (out_frame->data_len <= 8) {
-			out_data[0] = payload[0];
-			out_data[1] = payload[1];
-		}
-		else {
-			int limit = out_frame->data_len / sizeof(uint32_t);
-			for (int i = 0; i < limit; ++i) {
-				out_data[i] = payload[i];
-			}
-		}
-	}
+
+    uint32_t *out_data = (uint32_t *) out_frame->data;
+    /* It's faster to move two words around regardless of the actual DLC */
+    out_data[0] = ele->data[0];
+    out_data[1] = ele->data[1];
+
+
+#if CANARD_ENABLE_CANFD
+    if (out_frame->data_len >= 8) {
+        int limit = out_frame->data_len / sizeof(uint32_t);
+        for (int i = 0; i < limit; ++i) {
+            out_data[i] = ele->data[i];
+        }
+    }
+#endif
 }
 
 __attribute__((const))
 static inline uint32_t fdcan_ram(const fdcan_registers *r)
 {
-	return SRAMCAN_START + ((uint32_t) r - FDCAN1_ADDR) / sizeof(fdcan_registers) * SRAMCAN_SIZE;
+	return SRAMCAN_START + ((uint32_t) r - FDCAN1_ADDR) / sizeof(fdcan_registers) * sizeof(fdcan_sram);
 }
 
-__attribute__((const))
-static inline fdcan_rxfifo_elem *get_rxfifo_elem(const canard_stm32g4_fdcan_driver *driver,
-								fdcan_rxfifo_regs *fifo_regs, size_t elemindex)
+static int rxfifo_get_first_elem_index(fdcan_rxfifo_regs *rxf)
 {
-	fdcan_registers *fdcan = driver->fdcan;
-	int fifonr = ((uint32_t) fifo_regs) == ((uint32_t) &fdcan->RXF0S) ? 0 : 1;
-	return (fdcan_rxfifo_elem *)
-			(driver->fdcan_sram_base + SRAMCAN_RXFIFO0_OFFSET 	/* Base address */
-					+ SRAMCAN_RXFIFO_SIZE * fifonr 				/* FIFO0 or 1? */
-					+ sizeof(fdcan_rxfifo_elem) * elemindex); 	/* Which element */
-}
-
-static int rxfifo_elem_is_fd_frame(fdcan_rxfifo_elem *rxf)
-{
-	return (rxf->r[1] & (1 << 21)) > 0;
-}
-
-static int rxfifo_elem_get_ext_id(fdcan_rxfifo_elem *rxf)
-{
-    int ext_id = rxf->r[0] & 0x1FFFFFFF;
-    /* canardHandleRxFrame() wants bit 31 set if it's an extended frame.
-     * This driver filters out all non-extended frames, so we set it by default. */
-    ext_id |= CANARD_CAN_FRAME_EFF;
-    return ext_id;
-}
-
-static volatile uint32_t *rxfifo_elem_get_payload(fdcan_rxfifo_elem *rxf)
-{
-	return &rxf->r[2];
+    if (rxfifo_get_fill_level(rxf)) {
+        return rxfifo_get_read_index(rxf);
+    }
+    return -1;
 }
 
 static int rxfifo_get_fill_level(fdcan_rxfifo_regs *rxf)
@@ -369,39 +349,6 @@ static int rxfifo_get_fill_level(fdcan_rxfifo_regs *rxf)
 static int rxfifo_get_read_index(fdcan_rxfifo_regs *rxf)
 {
 	return (rxf->RXFxS & (3 << 8)) >> 8;
-}
-
-static fdcan_rxfifo_elem *rxfifo_get_first_elem(canard_stm32g4_fdcan_driver *driver, fdcan_rxfifo_regs *rxf, int *elem_index)
-{
-	if (rxfifo_get_fill_level(rxf)) {
-		*elem_index = rxfifo_get_read_index(rxf);
-		return get_rxfifo_elem(driver, rxf, *elem_index);
-	}
-	*elem_index = -1;
-	return NULL;
-}
-
-__attribute__((const))
-static inline fdcan_ext_filt_elem* get_ext_filt_elem(const fdcan_registers *r, size_t index)
-{
-	return (fdcan_ext_filt_elem *) (fdcan_ram(r) + SRAMCAN_EXT_FILT_OFFSET + sizeof(fdcan_ext_filt_elem) * index);
-}
-
-static int filt_elem_active(const fdcan_ext_filt_elem * const fe)
-{
-	return (fe->f0 & (0x7 << 29)) > 0;
-}
-
-static void filt_elem_accept_dual_id(fdcan_ext_filt_elem *fe, uint32_t frame_id1, uint32_t frame_id2)
-{
-	fe->f0 = (1 << EFEC_OFFSET) | frame_id1;
-	fe->f1 = (1 << EFT_OFFSET) | frame_id2;
-}
-
-static void filt_elem_reject_dual_id(fdcan_ext_filt_elem *fe, uint32_t frame_id1, uint32_t frame_id2)
-{
-	fe->f0 = (3 << EFEC_OFFSET) | frame_id1;
-	fe->f1 = (1 << EFT_OFFSET) | frame_id2;
 }
 
 __attribute__((const))
@@ -474,11 +421,6 @@ static inline int dlc_encode(int data_len, int fd)
 		CANARD_ASSERT(0);
 		return 0;
 	}
-}
-
-static int rxfifo_elem_get_dlc(fdcan_rxfifo_elem *rxf)
-{
-	return dlc_decode(((0xF << DLC_OFFSET) & rxf->r[1]) >> DLC_OFFSET, rxfifo_elem_is_fd_frame(rxf));
 }
 
 static void rxfifo_ack_frame(fdcan_rxfifo_regs *rxfifo_regs, int ack_index)
