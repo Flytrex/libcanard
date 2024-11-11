@@ -33,6 +33,8 @@ static inline int dlc_encode(int data_len, int fd);
 
 int canard_stm32g4fdcan_init(canard_stm32g4_fdcan_driver *driver, int bitrate_bps, int fdbitrate_bps, int periph_clock_rate)
 {
+    (void) fdbitrate_bps;
+
 	/* Calculate timings based on the provided bitrates */
 	CanardSTM32CANTimings nominal_timings = {0};
 	int rc = canardSTM32ComputeCANTimings(periph_clock_rate, bitrate_bps, &nominal_timings);
