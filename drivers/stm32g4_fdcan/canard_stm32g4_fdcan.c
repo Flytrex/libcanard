@@ -427,5 +427,5 @@ static inline int dlc_encode(int data_len, int fd)
 
 static void rxfifo_ack_frame(fdcan_rxfifo_regs *rxfifo_regs, int ack_index)
 {
-	rxfifo_regs->RXFxA |= 7 & ack_index;
+	rxfifo_regs->RXFxA = ack_index;
 }
