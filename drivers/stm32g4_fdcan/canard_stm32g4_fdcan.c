@@ -182,7 +182,7 @@ int canard_stm32g4fdcan_transmit(canard_stm32g4_fdcan_driver *driver, const Cana
 		/* TFQF set: TX queue full */
 		return 0;
 	}
-	int put_index = fdcan->TXFQS & (3 << 16) >> 16;
+	int put_index = (fdcan->TXFQS & (3 << 16)) >> 16;
 	canard_frame_to_tx_buf_elem(frame, &sram->txbuf[put_index]);
 	fdcan->TXBAR |= (1 << put_index);
 	return 1;
