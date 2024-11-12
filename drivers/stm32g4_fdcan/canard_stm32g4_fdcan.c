@@ -187,6 +187,7 @@ int canard_stm32g4fdcan_transmit(canard_stm32g4_fdcan_driver *driver, const Cana
     int put_index = (fdcan->TXFQS & (3 << 16)) >> 16;
     canard_frame_to_tx_buf_elem(frame, &sram->txbuf[put_index]);
     fdcan->TXBAR |= (1 << put_index);
+    driver->statistics.tx_frames++;
     return 1;
 }
 
@@ -201,6 +202,7 @@ int canard_stm32g4fdcan_receive(canard_stm32g4_fdcan_driver *driver, CanardCANFr
     if (index != -1) {
         rxfifo_receive_frame(fdcan, out_frame, &sram->rxfifo0[index]);
         rxfifo_ack_frame(rxfifo[0], index);
+        driver->statistics.rx_frames++;
         return 1;
     }
 
@@ -208,6 +210,7 @@ int canard_stm32g4fdcan_receive(canard_stm32g4_fdcan_driver *driver, CanardCANFr
     if (index != -1) {
         rxfifo_receive_frame(fdcan, out_frame, &sram->rxfifo1[index]);
         rxfifo_ack_frame(rxfifo[1], index);
+        driver->statistics.rx_frames++;
         return 1;
     }
 
@@ -228,6 +231,16 @@ void canard_stm32g4fdcan_get_protocol_state(canard_stm32g4_fdcan_driver *driver,
     s->error_passive = (fdcan->PSR & (1 << 5)) > 0;
     s->tec = fdcan->ECR & 0xFF;
     s->rec = (fdcan->ECR & 0xF00) >> 16;
+}
+
+void canard_stm32g4fdcan_get_statistics(canard_stm32g4_fdcan_driver *driver, uint32_t *num_rx_frames,
+                                        uint32_t *num_tx_frames, uint32_t *num_errors)
+{
+    *num_errors = driver->statistics.rx_fifo0_overruns +
+                  driver->statistics.rx_fifo1_overruns +
+                  driver->statistics.bus_off_events;
+    *num_tx_frames = driver->statistics.rx_frames;
+    *num_rx_frames = driver->statistics.tx_frames;
 }
 
 /* Local */

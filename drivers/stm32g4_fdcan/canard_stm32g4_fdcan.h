@@ -28,6 +28,8 @@ typedef struct {
 		uint32_t warning_events;
 		uint32_t bus_off_events;
 		uint32_t protocol_exceptions;
+		uint32_t tx_frames;
+		uint32_t rx_frames;
 	} statistics;
 	uint32_t fdcan_sram_base;
 } canard_stm32g4_fdcan_driver;
@@ -103,6 +105,13 @@ void canard_stm32g4fdcan_get_protocol_state(canard_stm32g4_fdcan_driver *driver,
  *	Call this after the node gets its Node ID.
  */
 void canard_stm32g4fdcan_enable_automatic_retransmission(canard_stm32g4_fdcan_driver *driver);
+
+
+/**
+ *  Gets basic statistics on this interface
+ */
+void canard_stm32g4fdcan_get_statistics(canard_stm32g4_fdcan_driver *driver, uint32_t *num_rx_frames,
+                                        uint32_t *num_tx_frames, uint32_t *num_errors);
 
 
 #endif /* CANARD_STM32G4_FDCAN_H_ */
