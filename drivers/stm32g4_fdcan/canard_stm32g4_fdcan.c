@@ -121,7 +121,7 @@ int canard_stm32g4fdcan_init(canard_stm32g4_fdcan_driver *driver, int bitrate_bp
 
 #if CANARD_ENABLE_CANFD
     /* Set Bit Rate Switching timings */
-    fdcan->DBTP = (1 << 23) | /* TDC = 1: enable transceiver delay compensation */
+    fdcan->DBTP = (0 << 23) | /* TDC = 0: disable transceiver delay compensation (same in AP_HAL_ChibiOS/CANFDIface.cpp) */
                   ((brs_timings.max_resynchronization_jump_width - 1)   << 0U) |
                   ((brs_timings.bit_segment_2 - 1)                      << 4U) |
                   ((brs_timings.bit_segment_1 - 1)                      << 8U) |
