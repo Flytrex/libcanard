@@ -318,7 +318,7 @@ static void rxfifo_receive_frame(fdcan_registers *regs, CanardCANFrame* const ou
                                             * no standard frames are received by the filter configuration */
     out_frame->iface_id = ((uint32_t) regs - FDCAN1_ADDR) / sizeof(fdcan_registers);
 #if CANARD_ENABLE_CANFD
-    out_frame->canfd = (ele->r0 & (1 << 21)) > 0;
+    out_frame->canfd = (ele->r1 & (1 << 21)) > 0;
     out_frame->data_len = dlc_decode(rxfifo_get_dlc(ele), out_frame->canfd);
     CANARD_ASSERT(out_frame->data_len <= 64);
 #else
