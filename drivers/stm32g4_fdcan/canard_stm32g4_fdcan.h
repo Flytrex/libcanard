@@ -67,6 +67,7 @@ void canard_stm32g4fdcan_start(canard_stm32g4_fdcan_driver *driver);
  */
 int canard_stm32g4fdcan_type_id_filter(canard_stm32g4_fdcan_driver *driver,
                                        int dronecan_type_id1, int dronecan_type_id2, int accept_not_reject);
+void canard_stm32g4fdcan_wipe_filters(canard_stm32g4_fdcan_driver *driver);
 
 /**
  * Pushes one frame into the TX buffer, if there is space.

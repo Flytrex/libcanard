@@ -168,6 +168,12 @@ int canard_stm32g4fdcan_type_id_filter(canard_stm32g4_fdcan_driver *driver,
     return -CANARD_ERROR_STM32_FDCAN_OUT_OF_FILTER_SPACE;
 }
 
+void canard_stm32g4fdcan_wipe_filters(canard_stm32g4_fdcan_driver *driver)
+{
+    fdcan_sram *sram = driver->fdcan_sram;
+    memset(sram->extid_filter_element, 0, sizeof(sram->extid_filter_element));
+}
+
 void canard_stm32g4fdcan_start(canard_stm32g4_fdcan_driver *driver)
 {
     fdcan_registers *fdcan = driver->fdcan;
