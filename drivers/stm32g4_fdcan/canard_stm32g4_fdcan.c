@@ -93,7 +93,6 @@ int canard_stm32g4fdcan_init(canard_stm32g4_fdcan_driver *driver, int bitrate_bp
                     (1 << 13)|                      /* EFBI=1: edge filtering enabled */
                     (1 << 14);                      /* TXP=1: Enable transmit pause -- should be generally beneficial. */
 
-
 #if CANARD_ENABLE_CANFD
     fdcan->CCCR |= (1 << 8) | (1 << 9);             /* Enable FD and Bit Rate Switching */
 #endif
@@ -192,7 +191,7 @@ int canard_stm32g4fdcan_transmit(canard_stm32g4_fdcan_driver *driver, const Cana
     }
     int put_index = (fdcan->TXFQS & (3 << 16)) >> 16;
     canard_frame_to_tx_buf_elem(frame, &sram->txbuf[put_index]);
-    fdcan->TXBAR |= (1 << put_index);
+    fdcan->TXBAR = (1 << put_index);
     driver->statistics.tx_frames++;
     return 1;
 }
@@ -226,7 +225,13 @@ int canard_stm32g4fdcan_receive(canard_stm32g4_fdcan_driver *driver, CanardCANFr
 void canard_stm32g4fdcan_enable_automatic_retransmission(canard_stm32g4_fdcan_driver *driver)
 {
     fdcan_registers *fdcan = driver->fdcan;
-    fdcan->CCCR &= ~(1 << 6);
+    fdcan->CCCR |=  (1 << 0);                       /* Get to INIT mode */
+    while (!(fdcan->CCCR & (1 << 0)));              /* Wait until init mode sets */
+    fdcan->CCCR |=  (1 << 1);                       /* CCE=1: config change enable */
+    while (!(fdcan->CCCR & (1 << 1)));              /* Wait intil CCE sets */
+    fdcan->CCCR &= ~(1 << 6);                       // DAR = 0
+    fdcan->CCCR &= ~((1 << 0) | (1 << 1));          /* Clear INIT and CCE */
+    while ((fdcan->CCCR & (1 << 0)));               /* Wait until we leave init mode */
 }
 
 void canard_stm32g4fdcan_get_protocol_state(canard_stm32g4_fdcan_driver *driver, canard_stm32g4fdcan_protocol_state *s)
