@@ -242,7 +242,7 @@ void canard_stm32g4fdcan_get_protocol_state(canard_stm32g4_fdcan_driver *driver,
     s->warning = (fdcan->PSR & (1 << 6)) > 0;
     s->error_passive = (fdcan->PSR & (1 << 5)) > 0;
     s->tec = fdcan->ECR & 0xFF;
-    s->rec = (fdcan->ECR & 0xF00) >> 16;
+    s->rec = (fdcan->ECR & 0x7F00) >> 8;
 }
 
 void canard_stm32g4fdcan_get_statistics(canard_stm32g4_fdcan_driver *driver, uint32_t *num_rx_frames,
