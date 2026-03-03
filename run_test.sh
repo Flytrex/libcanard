@@ -22,14 +22,14 @@ function run_cmake() {
         # copy and merge the coverage.info file to ../coverage.info if it exists
         if [ -f ../coverage.info ]; then
             echo -e "\e[1;32mMerging coverage.info to ../coverage.info\e[0m"
-            lcov --add-tracefile coverage.info --add-tracefile ../coverage.info --output-file ../coverage.info
+            lcov --add-tracefile coverage.info --add-tracefile ../coverage.info --output-file ../coverage.info --ignore-errors mismatch,unused
         else
             echo -e "\e[1;32mCopying coverage.info to ../coverage.info\e[0m"
             cp coverage.info ../coverage.info
         fi
         # print the coverage
         echo -e "\e[1;32mCoverage:\e[0m"
-        lcov --list ../coverage.info
+        lcov --list ../coverage.info --ignore-errors mismatch,unused
     fi
     popd
 }
