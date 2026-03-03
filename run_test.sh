@@ -40,13 +40,18 @@ OPTIONS=( CMAKE_32BIT CANARD_ENABLE_CANFD CANARD_ENABLE_DEADLINE CANARD_MULTI_IF
 if [ $# -eq 0 ]; then
     # remove existing coverage report
     rm -f coverage.info
-    for (( i = 0; i < 2 ** ${#OPTIONS[@]}; i++ )); do
+    TOTAL_ITERATIONS=$((2 ** ${#OPTIONS[@]}))
+    for (( i = 0; i < $TOTAL_ITERATIONS; i++ )); do
+        echo -e "\e[1;36m================================\e[0m"
+        echo -e "\e[1;36mIteration $((i+1))/$TOTAL_ITERATIONS\e[0m"
         OPTS=""
         for (( j = 0; j < ${#OPTIONS[@]}; j++ )); do
             if [ $(( i & ( 1 << j ) )) -ne 0 ]; then
                 OPTS="$OPTS -D${OPTIONS[j]}=1"
             fi
         done
+        echo -e "\e[1;36mOptions: $OPTS\e[0m"
+        echo -e "\e[1;36m================================\e[0m"
         run_cmake -DBUILD_TESTING=1 -DCANARD_ENABLE_COVERAGE=1 $OPTS
     done
 else
