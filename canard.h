@@ -178,7 +178,7 @@ typedef void* canard_buffer_idx_t;
 #endif
 
 
-    
+
 /**
  * This data type holds a standard CAN 2.0B data frame with 29-bit ID.
  */
@@ -239,15 +239,15 @@ typedef struct CanardTxQueueItem CanardTxQueueItem;
 /**
  * This struture provides information about encoded dronecan frame that needs
  * to be put on the wire.
- * 
+ *
  * In case of broadcast or request pointer to the Transfer ID should point to a persistent variable
- * (e.g. static or heap allocated, not on the stack); it will be updated by the library after every transmission. 
+ * (e.g. static or heap allocated, not on the stack); it will be updated by the library after every transmission.
  * The Transfer ID value cannot be shared between transfers that have different descriptors!
  * More on this in the transport layer specification.
- * 
+ *
  * For the case of response, the pointer to the Transfer ID is treated as const and generally points to transfer id
  * in CanardRxTransfer structure.
- * 
+ *
  */
 typedef struct {
     CanardTransferType transfer_type; ///< Type of transfer: CanardTransferTypeBroadcast, CanardTransferTypeRequest, CanardTransferTypeResponse
@@ -388,10 +388,6 @@ struct CanardInstance
     CanardTxQueueItem* tx_queue;                    ///< TX frames awaiting transmission
 
     void* user_reference;                           ///< User pointer that can link this instance with other objects
-
-#if CANARD_ENABLE_TAO_OPTION
-    bool tao_disabled;                              ///< True if TAO is disabled
-#endif
 };
 
 /**
@@ -503,14 +499,14 @@ void canardInitTxTransfer(CanardTxTransfer* transfer);
  *
  * For anonymous transfers, maximum data type ID (CanardTxTransfer::data_type_id) is limited to 3 (see specification for details).
  *
- * Please refer to the specification for more details about data type signatures (CanardTxTransfer::data_type_signature). Signature for 
+ * Please refer to the specification for more details about data type signatures (CanardTxTransfer::data_type_signature). Signature for
  * any data type can be obtained in many ways; for example, using the generated code generated using dronecan_dsdlc (see the repository).
  *
  * Use CanardTxTransfer structure to pass the transfer parameters. The structure is initialized by the
  * canardInitTxTransfer() function.
- * 
+ *
  * Pointer to the Transfer ID (CanardTxTransfer::inout_transfer_id) should point to a persistent variable
- * (e.g. static or heap allocated, not on the stack); it will be updated by the library after every transmission. 
+ * (e.g. static or heap allocated, not on the stack); it will be updated by the library after every transmission.
  * The Transfer ID value cannot be shared between transfers that have different descriptors!
  * More on this in the transport layer specification.
  *
@@ -543,7 +539,7 @@ int16_t canardBroadcast(CanardInstance* ins,            ///< Library instance
  * Sends a request or a response transfer.
  * Fails if the node is in passive mode.
  *
- * Please refer to the specification for more details about data type signatures (CanardTxTransfer::data_type_signature). Signature for 
+ * Please refer to the specification for more details about data type signatures (CanardTxTransfer::data_type_signature). Signature for
  * any data type can be obtained in many ways; for example, using the generated code generated using dronecan_dsdlc (see the repository).
  *
  * Pointer to the Transfer ID (CanardTxTransfer::inout_transfer_id) should point to a persistent variable

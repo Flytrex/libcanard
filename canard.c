@@ -89,9 +89,6 @@ void canardInit(CanardInstance* out_ins,
     out_ins->rx_states = NULL;
     out_ins->tx_queue = NULL;
     out_ins->user_reference = user_reference;
-#if CANARD_ENABLE_TAO_OPTION
-    out_ins->tao_disabled = false;
-#endif
     size_t pool_capacity = mem_arena_size / CANARD_MEM_BLOCK_SIZE;
     if (pool_capacity > 0xFFFFU)
     {
@@ -513,9 +510,9 @@ int16_t canardHandleRxFrame(CanardInstance* ins, const CanardCANFrame* frame, ui
             .source_node_id = source_node_id,
 #if CANARD_ENABLE_CANFD
             .canfd = frame->canfd,
-            .tao = !(frame->canfd || ins->tao_disabled)
+            .tao = !frame->canfd,
 #elif CANARD_ENABLE_TAO_OPTION
-            .tao = !ins->tao_disabled
+            .tao = true
 #endif
         };
 
@@ -627,9 +624,9 @@ int16_t canardHandleRxFrame(CanardInstance* ins, const CanardCANFrame* frame, ui
 
 #if CANARD_ENABLE_CANFD
             .canfd = frame->canfd,
-            .tao = !(frame->canfd || ins->tao_disabled)
+            .tao = !frame->canfd
 #elif CANARD_ENABLE_TAO_OPTION
-            .tao = !ins->tao_disabled
+            .tao = true
 #endif
         };
 
@@ -812,7 +809,7 @@ int16_t canardDecodeScalar(const CanardRxTransfer* transfer,
     {
         swapByteOrder(&storage.bytes[0], std_byte_length);
     }
-	
+
 #if WORD_ADDRESSING_IS_16BITS
     /*
      * Copying 8-bit array to 64-bit storage
@@ -956,7 +953,7 @@ void canardEncodeScalar(void* destination,
     }
 
     CANARD_ASSERT(std_byte_length > 0);
-	
+
 #if WORD_ADDRESSING_IS_16BITS
     /*
      * Copying 64-bit storage to 8-bit array
@@ -1250,7 +1247,7 @@ CANARD_INTERNAL int16_t enqueueTxFrames(CanardInstance* ins,
             }
             // tail byte
             sot_eot = (data_index == transfer->payload_len) ? (uint8_t)0x40 : sot_eot;
-            
+
             i = dlcToDataLength(dataLengthToDlc(i+1))-1;
             queue_item->frame.data[i] = (uint8_t)(sot_eot | ((uint32_t)toggle << 5U) | ((uint32_t)*transfer->inout_transfer_id & 31U));
             queue_item->frame.id = can_id | CANARD_CAN_FRAME_EFF;
