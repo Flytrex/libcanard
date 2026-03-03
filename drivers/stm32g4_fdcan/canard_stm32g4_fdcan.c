@@ -230,7 +230,7 @@ void canard_stm32g4fdcan_enable_automatic_retransmission(canard_stm32g4_fdcan_dr
     while (!(fdcan->CCCR & (1 << 0)));              /* Wait until init mode sets */
     fdcan->CCCR |=  (1 << 1);                       /* CCE=1: config change enable */
     while (!(fdcan->CCCR & (1 << 1)));              /* Wait intil CCE sets */
-    fdcan->CCCR &= ~(1 << 6);                       // DAR = 0
+    fdcan->CCCR &= ~(1 << 6);                       /* DAR = 0 */
     fdcan->CCCR &= ~((1 << 0) | (1 << 1));          /* Clear INIT and CCE */
     while ((fdcan->CCCR & (1 << 0)));               /* Wait until we leave init mode */
 }
@@ -328,7 +328,7 @@ static void rxfifo_receive_frame(fdcan_registers *regs, CanardCANFrame* const ou
     out_frame->id = ele->r0 & EXT_ID_FILTER;
     out_frame->id |= CANARD_CAN_FRAME_EFF; /* canardHandleRxFrame() fails if this bit is not set. We set it manually,
                                             * no standard frames are received by the filter configuration */
-    out_frame->iface_id = ((uint32_t) regs - FDCAN1_ADDR) / sizeof(fdcan_registers);
+    out_frame->iface_id = ((uint32_t) regs - FDCAN1_ADDR) / IP_OFFSET;
 #if CANARD_ENABLE_CANFD
     out_frame->canfd = (ele->r1 & (1 << 21)) > 0;
     out_frame->data_len = dlc_decode(rxfifo_get_dlc(ele), out_frame->canfd);
@@ -357,7 +357,7 @@ static void rxfifo_receive_frame(fdcan_registers *regs, CanardCANFrame* const ou
 __attribute__((const))
 static inline uint32_t fdcan_ram(const fdcan_registers *r)
 {
-    return SRAMCAN_START + ((uint32_t) r - FDCAN1_ADDR) / sizeof(fdcan_registers) * sizeof(fdcan_sram);
+    return SRAMCAN_START + ((uint32_t) r - FDCAN1_ADDR);
 }
 
 static int rxfifo_get_first_elem_index(fdcan_rxfifo_regs *rxf)

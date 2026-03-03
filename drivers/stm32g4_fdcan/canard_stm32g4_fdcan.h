@@ -90,7 +90,7 @@ int canard_stm32g4fdcan_transmit(canard_stm32g4_fdcan_driver *driver, const Cana
 int canard_stm32g4fdcan_receive(canard_stm32g4_fdcan_driver *driver, CanardCANFrame* const out_frame);
 
 /**
- *	Reads the instant standard CAN state variables from the hardware.
+ *	Reads the instantaneous standard CAN state variables from the hardware.
  */
 typedef struct {
 	uint8_t tec, rec;

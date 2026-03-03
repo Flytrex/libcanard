@@ -176,6 +176,8 @@ _Static_assert(sizeof(fdcan_sram) == 0x350, "fdcan_sram size must be 0x350");
 #define FDCAN2 ((fdcan_registers *) FDCAN2_ADDR)
 #define FDCAN3 ((fdcan_registers *) FDCAN3_ADDR)
 
+#define IP_OFFSET (FDCAN2_ADDR - FDCAN1_ADDR)
+
 #define SRAMCAN_START 			0x4000A400U
 
 #endif
