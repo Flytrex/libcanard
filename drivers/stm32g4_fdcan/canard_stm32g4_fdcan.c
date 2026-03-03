@@ -6,7 +6,7 @@
  */
 
 #include "canard_stm32g4_fdcan.h"
-
+#include <string.h>
 #include "_fdcan_g4.h"
 #include "../stm32/canard_stm32.h" /* for CanardSTM32ComputeCANTimings */
 
@@ -73,6 +73,7 @@ int canard_stm32g4fdcan_init(canard_stm32g4_fdcan_driver *driver, int bitrate_bp
         break;
     default:
         CANARD_ASSERT(0);
+        return -CANARD_ERROR_INVALID_ARGUMENT;
     }
 
     fdcan_registers *fdcan = driver->fdcan;
@@ -250,8 +251,8 @@ void canard_stm32g4fdcan_get_statistics(canard_stm32g4_fdcan_driver *driver, uin
     *num_errors = driver->statistics.rx_fifo0_overruns +
                   driver->statistics.rx_fifo1_overruns +
                   driver->statistics.bus_off_events;
-    *num_tx_frames = driver->statistics.rx_frames;
-    *num_rx_frames = driver->statistics.tx_frames;
+    *num_rx_frames = driver->statistics.rx_frames;
+    *num_tx_frames = driver->statistics.tx_frames;
 }
 
 /* Local */
@@ -412,6 +413,7 @@ static inline int dlc_decode(int dlc_value, int fd)
         }
         else {
             CANARD_ASSERT(0);
+            return 0;
         }
     }
 }

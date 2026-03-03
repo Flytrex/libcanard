@@ -37,7 +37,7 @@ Three things can happen to a message on reception (see `canard_stm32g4fdcan_type
 2. The DroneCAN data type ID is in the "reject" filter (`accept_not_reject=0`) -> discarded
 3. The DroneCAN data type ID is in neither -> goes to FIFO1
 
-`canard_stm32fdcan_recieve` reads one message at a time and prefers FIFO0.
+`canard_stm32g4fdcan_receive` reads one message at a time and prefers FIFO0.
 
 For instance, a ESC 
 1. would prioritize `1031.RawCommand` above anything else - so this ID should be accepted.

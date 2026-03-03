@@ -12,7 +12,7 @@
 
 #include <canard.h>
 
-#define CANARD_ERROR_STM32_FDCAN_OUT_OF_FILTER_SPACE -1200
+#define CANARD_ERROR_STM32_FDCAN_OUT_OF_FILTER_SPACE 1200
 
 #define FDCAN1_ADDR 0x40006400U
 #define FDCAN2_ADDR 0x40006800U
@@ -41,7 +41,7 @@ typedef struct {
  * If CANARD_ENABLE_CANFD is defined, the hardware will be initialized to CAN FD mode
  * (long frame + bit rate switch).
  *
- * @param[in] driver.fdcan		Must be set to FDCAN1_ADDRESS, FDCAN2_ADDRESS or FDCAN3_ADDRESS.
+ * @param[in] driver.fdcan		Must be set to FDCAN1_ADDR, FDCAN2_ADDR or FDCAN3_ADDR.
  *   		  					It's the user's responsibility to check if the hardware has them.
  * @param[in] bitrate_bps		Nominal bitrate
  * @param[in] fdbitrate_bps		FD bitrate (ignored if CANARD_ENABLE_CANFD is not defined).

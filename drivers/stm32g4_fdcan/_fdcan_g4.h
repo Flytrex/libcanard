@@ -168,7 +168,7 @@ typedef struct __attribute__((packed, aligned(4))) {
     fdcan_tx_buf_element txbuf[FDCAN_NUM_TX_BUF];                           // 54   // 212 == 0x350
 } fdcan_sram;
 
-static_assert(sizeof(fdcan_sram) == 0x350);
+_Static_assert(sizeof(fdcan_sram) == 0x350, "fdcan_sram size must be 0x350");
 
 #define DLC_OFFSET 16
 
