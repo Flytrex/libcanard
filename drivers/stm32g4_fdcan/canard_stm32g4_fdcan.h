@@ -13,6 +13,11 @@
 
 #include <canard.h>
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #define CANARD_ERROR_STM32_FDCAN_OUT_OF_FILTER_SPACE 1200
 
 #define FDCAN1_ADDR 0x40006400U
@@ -114,5 +119,9 @@ void canard_stm32g4fdcan_enable_automatic_retransmission(canard_stm32g4_fdcan_dr
 void canard_stm32g4fdcan_get_statistics(canard_stm32g4_fdcan_driver *driver, uint32_t *num_rx_frames,
                                         uint32_t *num_tx_frames, uint32_t *num_errors);
 
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* CANARD_STM32G4_FDCAN_H_ */
