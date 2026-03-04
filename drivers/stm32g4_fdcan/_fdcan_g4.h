@@ -1,3 +1,11 @@
+/*
+ * Copyright (c) 2024-2026 Flytrex, by Grisha Revzin
+ *
+ * Distributed under the MIT License, available in the file LICENSE.
+ *
+ * Created on: Sep 10, 2024
+ */
+
 #ifndef INTERNAL_FDCAN_H
 #define INTERNAL_FDCAN_H
 
@@ -169,8 +177,6 @@ typedef struct __attribute__((packed, aligned(4))) {
 } fdcan_sram;
 
 _Static_assert(sizeof(fdcan_sram) == 0x350, "fdcan_sram size must be 0x350");
-
-#define DLC_OFFSET 16
 
 #define FDCAN1 ((fdcan_registers *) FDCAN1_ADDR)
 #define FDCAN2 ((fdcan_registers *) FDCAN2_ADDR)

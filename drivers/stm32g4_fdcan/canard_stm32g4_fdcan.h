@@ -1,8 +1,9 @@
 /*
- * canard_stm32g4_fdcan.h
+ * Copyright (c) 2024-2026 Flytrex, by Grisha Revzin
  *
- *  Created on: Sep 10, 2024
- *      Author: grishar
+ * Distributed under the MIT License, available in the file LICENSE.
+ *
+ * Created on: Sep 10, 2024
  */
 
 #ifndef CANARD_STM32G4_FDCAN_H_
