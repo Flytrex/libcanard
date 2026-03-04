@@ -100,7 +100,6 @@ int canard_stm32g4fdcan_receive(canard_stm32g4_fdcan_driver *driver, CanardCANFr
 typedef struct {
 	uint8_t tec, rec;
 	uint8_t bus_off, error_passive, warning;
-	uint8_t delay_comp_value;
 } canard_stm32g4fdcan_protocol_state;
 
 void canard_stm32g4fdcan_get_protocol_state(canard_stm32g4_fdcan_driver *driver, canard_stm32g4fdcan_protocol_state *s);
