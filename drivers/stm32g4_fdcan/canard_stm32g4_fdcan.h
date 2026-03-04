@@ -32,7 +32,6 @@ typedef struct {
 		uint32_t tx_frames;
 		uint32_t rx_frames;
 	} statistics;
-	uint32_t fdcan_sram_base;
 } canard_stm32g4_fdcan_driver;
 
 /**
@@ -46,7 +45,7 @@ typedef struct {
  *   		  					It's the user's responsibility to check if the hardware has them.
  * @param[in] bitrate_bps		Nominal bitrate
  * @param[in] fdbitrate_bps		FD bitrate (ignored if CANARD_ENABLE_CANFD is not defined).
- * @param[in] periph_clock  	The clock rate of the hardware (set to 80 MHz for best results).
+ * @param[in] periph_clock_rate The clock rate of the hardware (set to 80 MHz for best results).
  * @retval 0 -- ok
  * @retval negative -- error
  */
