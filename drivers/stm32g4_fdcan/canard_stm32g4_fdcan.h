@@ -62,6 +62,17 @@ int canard_stm32g4fdcan_init(canard_stm32g4_fdcan_driver *driver, int bitrate_bp
 void canard_stm32g4fdcan_start(canard_stm32g4_fdcan_driver *driver);
 
 /**
+ * Routes all FDCAN interrupts to line 0 and enables it.
+ * Call this before enabling the NVIC IRQ for IT0.
+ */
+void canard_stm32g4fdcan_config_irq_lines(canard_stm32g4_fdcan_driver *driver);
+
+/**
+ * Returns the base address of the FDCAN peripheral in the driver.
+ */
+uint32_t canard_stm32g4fdcan_get_base_addr(const canard_stm32g4_fdcan_driver *driver);
+
+/**
  * Creates a filter based on broadcast message IDs. Pass DroneCAN message IDs to create a filter.
  * Due to internal organization, these filters come in pairs: just set to 0 if not needed.
  * The messages that match the filter will either get into FIFO0 or rejected, depending on the value of

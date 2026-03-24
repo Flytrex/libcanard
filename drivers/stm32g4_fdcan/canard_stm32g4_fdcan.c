@@ -175,6 +175,18 @@ void canard_stm32g4fdcan_wipe_filters(canard_stm32g4_fdcan_driver *driver)
     memset(sram->extid_filter_element, 0, sizeof(sram->extid_filter_element));
 }
 
+void canard_stm32g4fdcan_config_irq_lines(canard_stm32g4_fdcan_driver *driver)
+{
+    fdcan_registers *fdcan = driver->fdcan;
+    fdcan->ILS = 0;         /* all interrupts on line 0 */
+    fdcan->ILE = (1U << 0); /* enable line 0 */
+}
+
+uint32_t canard_stm32g4fdcan_get_base_addr(const canard_stm32g4_fdcan_driver *driver)
+{
+    return (uint32_t)driver->fdcan;
+}
+
 void canard_stm32g4fdcan_start(canard_stm32g4_fdcan_driver *driver)
 {
     fdcan_registers *fdcan = driver->fdcan;
