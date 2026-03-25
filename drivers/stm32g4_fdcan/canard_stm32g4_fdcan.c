@@ -187,7 +187,7 @@ void canard_stm32g4fdcan_start(canard_stm32g4_fdcan_driver *driver)
 
 uint32_t canard_stm32g4fdcan_get_base_addr(const canard_stm32g4_fdcan_driver *driver)
 {
-    return (uint32_t)driver->fdcan;
+    return (uint32_t) driver->fdcan;
 }
 
 int canard_stm32g4fdcan_transmit(canard_stm32g4_fdcan_driver *driver, const CanardCANFrame* const frame)
