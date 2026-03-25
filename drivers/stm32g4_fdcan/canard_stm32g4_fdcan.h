@@ -61,11 +61,6 @@ int canard_stm32g4fdcan_init(canard_stm32g4_fdcan_driver *driver, int bitrate_bp
  */
 void canard_stm32g4fdcan_start(canard_stm32g4_fdcan_driver *driver);
 
-/**
- * Routes all FDCAN interrupts to line 0 and enables it.
- * Call this before enabling the NVIC IRQ for IT0.
- */
-void canard_stm32g4fdcan_config_irq_lines(canard_stm32g4_fdcan_driver *driver);
 
 /**
  * Returns the base address of the FDCAN peripheral in the driver.
