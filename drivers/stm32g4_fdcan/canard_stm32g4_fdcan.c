@@ -185,6 +185,11 @@ void canard_stm32g4fdcan_start(canard_stm32g4_fdcan_driver *driver)
     while ((fdcan->CCCR & (1 << 0)));           /* Wait until we leave init mode */
 }
 
+uint32_t canard_stm32g4fdcan_get_base_addr(const canard_stm32g4_fdcan_driver *driver)
+{
+    return (uint32_t)driver->fdcan;
+}
+
 int canard_stm32g4fdcan_transmit(canard_stm32g4_fdcan_driver *driver, const CanardCANFrame* const frame)
 {
     clear_and_handle_faults(driver);
