@@ -9,7 +9,6 @@
 #include "canard_stm32g4_fdcan.h"
 #include <string.h>
 #include "_fdcan_g4.h"
-#include "stm32g4xx.h"
 #include "../stm32/canard_stm32.h" /* for CanardSTM32ComputeCANTimings */
 
 /* Local  */
@@ -30,9 +29,6 @@ __attribute__((const))
 static inline int dlc_encode(int data_len, int fd);
 
 #define EXT_ID_FILTER 0x1FFFFFFF
-#ifndef CANARD_STM32G4_FDCAN_IRQ_PRIORITY
-#define CANARD_STM32G4_FDCAN_IRQ_PRIORITY 9U
-#endif
 
 /* Module */
 
@@ -143,23 +139,6 @@ int canard_stm32g4fdcan_init(canard_stm32g4_fdcan_driver *driver, int bitrate_bp
     fdcan->IE  = (1 << 19) | (1 << 5) | (1 << 3) | (1 << 2) | (1 << 0);
     fdcan->ILS = 0;         /* all interrupts on line 0 */
     fdcan->ILE = (1 << 0);  /* enable line 0 */
-
-    IRQn_Type irqn = FDCAN1_IT0_IRQn;
-    switch ((uint32_t)driver->fdcan) {
-#ifdef FDCAN2_IT0_IRQn
-    case FDCAN2_ADDR: 
-        irqn = FDCAN2_IT0_IRQn; 
-        break;
-#endif
-#ifdef FDCAN3_IT0_IRQn
-    case FDCAN3_ADDR: 
-        irqn = FDCAN3_IT0_IRQn; 
-        break;
-#endif
-    default: break;
-    }
-    NVIC_SetPriority(irqn, CANARD_STM32G4_FDCAN_IRQ_PRIORITY);
-    NVIC_EnableIRQ(irqn);
 
     driver->fdcan_sram = (void *) fdcan_ram(fdcan);
     memset(driver->fdcan_sram, 0, sizeof(fdcan_sram));
