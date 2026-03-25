@@ -136,7 +136,10 @@ int canard_stm32g4fdcan_init(canard_stm32g4_fdcan_driver *driver, int bitrate_bp
      * - on fifo0/1 received/lost
      * - on bus-off */
     /*           bus-off  | rx1 lost | rx1 new  | rx0 lost | rx0 new */
-    fdcan->IE = (1 << 19) | (1 << 5) | (1 << 3) | (1 << 2) | (1 << 0);
+    fdcan->IE  = (1 << 19) | (1 << 5) | (1 << 3) | (1 << 2) | (1 << 0);
+    fdcan->ILS = 0;         /* all interrupts on line 0 */
+    fdcan->ILE = (1 << 0);  /* enable line 0 */
+
     driver->fdcan_sram = (void *) fdcan_ram(fdcan);
     memset(driver->fdcan_sram, 0, sizeof(fdcan_sram));
     return 0;
@@ -180,6 +183,11 @@ void canard_stm32g4fdcan_start(canard_stm32g4_fdcan_driver *driver)
     fdcan_registers *fdcan = driver->fdcan;
     fdcan->CCCR &= ~((1 << 0) | (1 << 1));      /* Clear INIT and CCE */
     while ((fdcan->CCCR & (1 << 0)));           /* Wait until we leave init mode */
+}
+
+uint32_t canard_stm32g4fdcan_get_base_addr(const canard_stm32g4_fdcan_driver *driver)
+{
+    return (uint32_t) driver->fdcan;
 }
 
 int canard_stm32g4fdcan_transmit(canard_stm32g4_fdcan_driver *driver, const CanardCANFrame* const frame)
