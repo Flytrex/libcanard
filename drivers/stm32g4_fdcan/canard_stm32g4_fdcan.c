@@ -366,7 +366,9 @@ static void rxfifo_receive_frame(fdcan_registers *regs, CanardCANFrame* const ou
 __attribute__((const))
 static inline uint32_t fdcan_ram(const fdcan_registers *r)
 {
-    return SRAMCAN_START + ((uint32_t) r - FDCAN1_ADDR);
+    /* Message RAM sections are 0x350 apart */
+    const uint32_t instance = ((uint32_t) r - FDCAN1_ADDR) / IP_OFFSET;
+    return SRAMCAN_START + (instance * sizeof(fdcan_sram));
 }
 
 static int rxfifo_get_first_elem_index(fdcan_rxfifo_regs *rxf)
